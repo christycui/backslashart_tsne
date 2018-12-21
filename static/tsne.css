@@ -1,0 +1,23 @@
+section {
+    width: 80%;
+    height: 500px;
+    padding: 10px;
+}
+div#raw {
+    width: 50%;
+    height: 500px;
+    float: left;
+    border-style: solid;
+    border-color: black;
+    border-width: thin;
+}
+div#reduced {
+    height: 500px;
+    border-style: solid;
+    border-color: black;
+    border-width: thin;
+}
+div.buttons {
+    float: right;
+}
+

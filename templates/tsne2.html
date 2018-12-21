@@ -1,0 +1,171 @@
+<html>
+	<head>
+        <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+        <script type=text/javascript>
+          $SCRIPT_ROOT = {{ request.script_root|tojson|safe }};
+        </script>
+        <script src="https://d3js.org/d3.v5.min.js"></script>
+        <script src="https://d3js.org/d3-dsv.v1.min.js"></script>
+        <script src="https://d3js.org/d3-fetch.v1.min.js"></script>
+        <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    	<script src="/static/tsne.js"></script>
+        <link rel="stylesheet" type="text/css" href="/static/tsne.css">
+        <script type=text/javascript>
+            d3.text("/static/x_maxabs.tsv").then(function(input_file) {
+                input_2d_strings = d3.tsvParseRows(input_file);
+                var input_2d = [];
+                for (var i = 0; i < input_2d_strings.length; ++i) {
+                  input_2d.push(input_2d_strings[i].map(x => +x));
+                }
+                var opt = {}
+                opt.epsilon = 10; // epsilon is learning rate (10 = default)
+                opt.perplexity = 11; // roughly how many neighbors each point influences (30 = default)
+                opt.dim = 3; // dimensionality of the embedding (2 = default)
+
+                var tsne = new tsnejs.tSNE(opt); // create a tSNE instance
+
+                // initialize data. Here we have 3 points and some example pairwise dissimilarities
+                tsne.initDataRaw(input_2d);
+
+                function iterate(iter, count) {
+                    for (var k = 0; k < iter; k++) {
+                      tsne.step(); // every time you call this, solution gets better
+                    }
+                    var Y = tsne.getSolution(); // Y is an array of 2-D points that you can plot
+                    showEmbedding3D(Y, 'raw');
+                    console.log('Showed raw points.');
+                    $.post($SCRIPT_ROOT + "/tsne", {
+                        pts: JSON.stringify(Y),
+                        step: JSON.stringify(count)
+                    }).then(function(centers_json) {
+                        var centers = JSON.parse(centers_json);
+                        centers_2d = centers.map(function(c){ return [c[0], c[1]] });
+                        showEmbedding(centers_2d, 'reduced');
+                        console.log('Showed reduced points.');
+                    });
+                }
+                
+                var count = 0;
+                var iter = 50;
+                var intervalId;
+                $('#start').click(function() {
+                    intervalId = setInterval(function() {
+                        count += iter;
+                        iterate(iter, count);
+                        $('#iteration').text(`Iteration ${count}`);
+                        }, 10000);
+                    $('p#update').text('Running...');
+                });
+                $('#stop').click(function() {
+                    clearInterval(intervalId);
+                    $('p#update').text('Stopped.');
+                });
+                
+                function showEmbedding3D(data, class_name) {
+                    function unpack(rows, key) {
+                        return rows.map(function(row)
+                        { return row[key]; });
+                    }
+                    var trace1 = {
+                        x:unpack(data, 0), y: unpack(data, 1), z: unpack(data, 2),
+                        mode: 'markers',
+                        marker: {
+                            size: 5,
+                            opacity: 0.8},
+                        type: 'scatter3d'
+                    };
+
+                    var data = [trace1];
+                    var layout = {margin: {
+                        l: 0,
+                        r: 0,
+                        b: 0,
+                        t: 0
+                      }};
+                    Plotly.react(`${class_name}`, data, layout);
+                }
+
+                function showEmbedding(data, class_name) {
+                  const margin = {top: 20, right: 15, bottom: 20, left: 20};
+                  const width = 400 - margin.left - margin.right;
+                  const height = 400 - margin.top - margin.bottom;
+
+                  const x = d3.scaleLinear().domain([-50, 50]).range([0, width]);
+                  const y = d3.scaleLinear().domain([-50, 50]).range([height, 0]);
+
+                  // remove old chart
+                  d3.select(`svg.${class_name}`).remove();
+
+                  const chart = d3.select(`div#${class_name}`)
+                                    .append('svg')
+                                    .attr('width', width + margin.right + margin.left)
+                                    .attr('height', height + margin.top + margin.bottom)
+                                    .attr('class', class_name);
+
+                  const main =
+                      chart.append('g')
+                          .attr(
+                              'transform', 'translate(' + margin.left + ',' + margin.top + ')')
+                          .attr('width', width)
+                          .attr('height', height)
+                          .attr('class', class_name);
+
+                  const xAxis = d3.axisBottom(x);
+                  main.append('g')
+                      .attr('transform', 'translate(0,' + height + ')')
+                      .attr('class', 'main axis date')
+                      .call(xAxis);
+
+                  const yAxis = d3.axisLeft(y);
+                  main.append('g')
+                      .attr('transform', 'translate(0,0)')
+                      .attr('class', 'main axis date')
+                      .call(yAxis);
+
+                  const dots = main.append('g');
+
+                  if (class_name == 'reduced') {
+                    var color = d3.scaleOrdinal(d3.schemeAccent);
+                    dots.selectAll('scatter-dots')
+                      .data(data)
+                      .enter()
+                      .append('svg:circle')
+                      .attr('cx', (d) => x(d[0]))
+                      .attr('cy', (d) => y(d[1]))
+                      .attr('stroke-width', 0.25)
+                      .attr('stroke', '#1f77b4')
+                      .attr('r', 5)
+                      .attr('fill', (d, i) => color(i));
+                  } else {
+                    dots.selectAll('scatter-dots')
+                      .data(data)
+                      .enter()
+                      .append('svg:circle')
+                      .attr('cx', (d) => x(d[0]))
+                      .attr('cy', (d) => y(d[1]))
+                      .attr('stroke-width', 0.25)
+                      .attr('stroke', '#1f77b4')
+                      .attr('fill', 'none')
+                      .attr('r', 5);
+                  }
+                };
+            });
+        </script>
+    </head>
+    <body>
+        <h3 id='iteration'>Iteration 0</h3>
+        <section class="container">
+            <div id='raw'>
+                <h4>Raw TSNE points</h4>
+            </div>
+            <div id='reduced'>
+                <h4>Reduced centers</h4>
+            </div>
+            <div class='buttons'>
+                <button type="button" id="start">Start</button>
+                <button type="button" id="stop">Stop</button>
+                <p id='update'></p>
+            </div>
+        </section>
+    </body>
+</html>

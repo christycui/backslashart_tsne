@@ -1,0 +1,5 @@
+DROP TABLE IF EXISTS tsne;
+CREATE TABLE tsne (
+ step INTEGER PRIMARY KEY,
+ coords TEXT NOT NULL
+);
