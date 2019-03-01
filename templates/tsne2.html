@@ -26,8 +26,8 @@
                     input_2d.push(input_2d_strings[i].map(x => +x));
                   }
                   var opt = {}
-                  opt.epsilon = 10; // epsilon is learning rate (10 = default)
-                  opt.perplexity = 11; // roughly how many neighbors each point influences (30 = default)
+                  opt.epsilon = config.epsilon; // epsilon is learning rate (10 = default)
+                  opt.perplexity = config.perplexity; // roughly how many neighbors each point influences (30 = default)
                   opt.dim = 3; // dimensionality of the embedding (2 = default)
 
                   var tsne = new tsnejs.tSNE(opt); // create a tSNE instance
@@ -54,7 +54,7 @@
                   }
                   
                   var count = 0;
-                  var iter = 50;
+                  var iter = config.interval;
                   var intervalId;
                   $('#start').click(function() {
                       intervalId = setInterval(function() {

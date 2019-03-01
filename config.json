@@ -1,5 +1,6 @@
 {
-	"path": "/Users/christy/Downloads/_art",
+	"path": "path/to/app",
+	"database_name": "tsne.db",
 	"interval": 50,
 	"num_clusters": 5,
 	"data_file": "/static/x_maxabs.tsv",
