@@ -1,0 +1,8 @@
+{
+	"path": "/Users/christy/Downloads/_art",
+	"interval": 50,
+	"num_clusters": 5,
+	"data_file": "/static/x_maxabs.tsv",
+	"epsilon": 10,
+	"perplexity": 11
+}
