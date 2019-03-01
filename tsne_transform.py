@@ -8,10 +8,13 @@ import sqlite3
 from flask import g
 import scipy
 
-PATH = '/Users/christy/Downloads/_art'
+with open('config.json', 'r') as f:
+    config = json.load(f)
+
+PATH = config['path']
 DATABASE = PATH + '/db/tsne.db'
-INTERVAL = 50
-MAX_ITERATIONS = 100
+INTERVAL = config['interval']
+NUM_CLUSTERS = config['num_clusters']
 app = Flask(__name__)
 
 @app.route('/', methods = ['GET'])
@@ -23,9 +26,7 @@ def raw_to_tsne():
     jsdata = request.form['pts']
     step = int(request.form['step'])
     data = np.array(json.loads(jsdata))
-    # centroids = kmeans(data, 5)
-    # print(centroids)
-    kmeans = KMeans(n_clusters=5, random_state=0).fit(data)
+    kmeans = KMeans(n_clusters=NUM_CLUSTERS, random_state=0).fit(data)
     centers = kmeans.cluster_centers_.tolist()
     # reorder according to distance
     if step != INTERVAL:
@@ -95,59 +96,3 @@ def mapping(centers, old_centers):
         old_centers[ind] = [float('inf'), float('inf'), float('inf')]
         res[ind] = pt
     return res
-
-#### OLD CODE ##################################
-def kmeans(data, k, centroids=None):
-    if not centroids:
-        centroids = getRandomCentroids(data, k)
-    iterations = 0
-    old_centroids = None
-    print('Running K means.')
-    while not converge(old_centroids, centroids, iterations):
-        # Save old centroids for convergence test. Book keeping.
-        old_centroids = centroids
-        iterations += 1
-        
-        # Assign labels to each datapoint based on centroids
-        labels = getLabels(data, centroids)
-        
-        # Assign centroids based on datapoint labels
-        centroids, new_k = getCentroids(data, labels, k)
-        k = new_k
-    print('Converged.')
-    return centroids
-
-def getRandomCentroids(data, k):
-    idx = np.random.choice(data.shape[0], k, replace=False)
-    return data[idx]
-
-def converge(old_centroids, centroids, iterations):
-    # convergence test
-    if not old_centroids: return False
-    if (old_centroids and old_centroids.shape[0] != centroids.shape[0]) or iterations > MAX_ITERATIONS: 
-        return True
-    return (old_centroids == centroids) # TODO: or similar
-
-def getLabels(data, centroids):
-    res = []
-    for pt in data:
-    	distances = np.sqrt(((centroids-pt)**2).sum(axis=0))
-    	res.append(np.argmin(distances))
-    return res
-
-# Returns k random centroids (k may be different)
-def getCentroids(data, labels, k):
-    # note: if a label is empty or contains only a few points, throw it out.
-    data_by_labels = [[] for _ in range(k)]
-    for ind in range(data.shape[0]):
-        data_by_labels[labels[ind]].append(data[ind])
-    # check if empty
-    for pts in data_by_labels:
-        if not pts:
-            data_by_labels.remove(pts)
-    data_by_labels = np.asarray(data_by_labels, dtype=np.float32)
-    print('There are ', data_by_labels.shape[0], 'labels.')
-    print('Shape of vector is ', data_by_labels.shape)
-    print('Centroids array is', np.average(data_by_labels, axis=2))
-
-    return np.average(data_by_labels, axis=1), data_by_labels.shape[0]
